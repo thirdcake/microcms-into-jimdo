@@ -1,0 +1,270 @@
+<div id="my-blog"></div>
+<template id="my-blog-post">
+  <h1 class="post-title">post-title</h1>
+  <nav>
+    <a href="/">トップページ</a>
+    <span>&nbsp;&gt;&nbsp;</span>
+    <a href="?">記事一覧</a>
+    <span>&nbsp;&gt;&nbsp;</span>
+    <span class="post-title">post-title</span>
+  </nav>
+  <p><time class="post-updateat">update_at</time></p>
+  <div class="post-content">content</div>
+  <p style="margin-block:2rem;"><a href="?">記事一覧に戻る</a></p>
+</template>
+<template id="my-blog-archives">
+  <h1>記事一覧</h1>
+  <nav>
+    <a href="/">トップページ</a>
+    <span>&nbsp;&gt;&nbsp;</span>
+    <span>記事一覧</span>
+  </nav>
+  <div class="archives-contents"></div>
+  <nav class="archives-pager">page</nav>
+</template>
+<template id="my-blog-archive">
+  <div class="archive-content" style="padding-block:2rem;">
+    <h2>
+      <a class="archive-url" href="#">
+        <span class="archive-title">title</span>
+      </a>
+    </h2>
+    <p><time class="archive-updateat">update_at</time></p>
+    <div style="max-width:800px; width:100%;">
+      <img src="#" alt="#" decoding="async" width="16" height="9" style="max-width:100%;height:auto;"
+        class="archive-eyecatch" />
+    </div>
+  </div>
+</template>
+<script>
+"use strict";
+{
+  /**
+   * 設定
+   */
+  const microcms = {
+    serviceid: "【サービスID】",
+    endpoint: "【エンドポイント】",
+    apikey: "【APIキー】",
+    limit: 5,
+  }
+  /** 
+   * DOMを取得する。
+  */
+  const myblog = document.getElementById('my-blog'),
+    templateP = document.getElementById('my-blog-post'),
+    templateAs = document.getElementById('my-blog-archives'),
+    templateA = document.getElementById('my-blog-archive');
+
+  /**
+  * 最初に実行する。location.searchを取得して、typeごとに表示する。
+  */
+  function init() {
+    const searchParams = getSearch(location.search);
+    const searchObj = {
+      myblogtype : searchParams.get('myblogtype'),
+    }
+    if (searchParams.get('myblogid') ) {
+		searchObj.myblogid = searchParams.get('myblogid');
+		}
+	if ( searchParams.get('myblogpage') ) {
+		searchObj.myblogpage = searchParams.get('myblogpage');
+	}
+    history.replaceState(searchObj, "", location.href);
+    displayMyblog(searchParams);
+  }
+
+  /**
+   * クリックされたら実行する。preventDefaultして、表示を変更して、historyAPIを変更する。
+   */
+  function clickHandler(ev) {
+    if (shouldPreventDefault(ev.target)) {
+      ev.preventDefault();
+      const searchParams = getSearch(ev.target.closest('a').search);
+      displayMyblog(searchParams);
+      pushHistory(searchParams);
+    } else { return }
+  }
+  /**
+   * 戻るが押されたときに実行する。
+   */
+  function backHandler(ev) {
+    const searchParams = new URLSearchParams( ev.state );
+    displayMyblog(searchParams);
+  }
+  /**
+   * searh文字列からURLSearchParamsを返す
+   */
+  function getSearch(urlSearch) {
+    const params = new URLSearchParams(urlSearch);
+    const type = params.get('myblogtype');
+    const blogid = params.get('myblogid');
+    if (type && type === 'post' && blogid) {
+    } else {
+      params.set('myblogtype', 'archive');
+      const page = params.get('myblogpage');
+      if (page > 0) {
+      } else {
+        params.set('myblogpage', 1);
+      }
+    }
+    return params
+  }
+  /**
+   * event targetをもとにpreventDefaultすべきか返す
+   */
+  function shouldPreventDefault(target) {
+    const href = target.closest('a')?.href;
+    const url = href ? new URL(href) : false;
+    return (
+      url &&
+      url.origin === location.origin &&
+      url.pathname === location.pathname
+    );
+  }
+  /**
+  * 表示処理
+  */
+  function displayMyblog(searchParams) {
+    while (myblog.firstChild) {
+      myblog.removeChild(myblog.firstChild);
+    }
+    const fetchParam = createFetchParam(searchParams);
+    fetch(...fetchParam)
+    .then(res => res.json())
+    .then(json => {
+    if (searchParams.get('myblogtype') === 'post') {
+      const cloneP = templateP.content.cloneNode(true);
+      cloneP.querySelectorAll('.post-title').forEach(elm => {
+        elm.textContent = json.title;
+      });
+      cloneP.querySelector('.post-content').innerHTML = json.content;
+      const date = new Date(json.updatedAt);
+      cloneP.querySelector('.post-updateat').textContent = date.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        weekday: 'short',
+      });
+      cloneP.querySelector('.post-updateat').datetime = json.updatedAt;
+      myblog.appendChild(cloneP);
+    } else {
+      const cloneAs = templateAs.content.cloneNode(true);
+      const fragment = json.contents.reduce((frag, item) => {
+        const cloneA = templateA.content.cloneNode(true);
+        cloneA.querySelector('.archive-title').textContent = item.title;
+        const params = new URLSearchParams();
+        params.set('myblogtype', 'post');
+        params.set('myblogid', item.id);
+        const url = new URL(location.href);
+        url.search = params.toString();
+        cloneA.querySelector('.archive-url').href = url;
+        const date = new Date(item.updatedAt);
+        cloneA.querySelector('.archive-updateat').textContent = date.toLocaleDateString('ja-JP', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          weekday: 'short',
+        });
+        cloneA.querySelector('.archive-updateat').datetime = item.updatedAt;
+        if (item.eyecatch) {
+          cloneA.querySelector('.archive-eyecatch').src = item.eyecatch.url;
+          cloneA.querySelector('.archive-eyecatch').alt = item.title;
+          cloneA.querySelector('.archive-eyecatch').width = item.eyecatch.width;
+          cloneA.querySelector('.archive-eyecatch').height = item.eyecatch.height;
+        } else {
+          cloneA.querySelector('.archive-eyecatch').parentNode.innerHTML = '<svg width="400" height="225" viewBox="0 0 400 225" style="background-color: #ddd;"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#555555" font-size="36" font-family="Arial, sans-serif">no image</text></svg>';
+        }
+        frag.appendChild(cloneA);
+        return frag;
+      }, document.createDocumentFragment());
+      cloneAs.querySelector('.archives-contents').appendChild(fragment);
+      const pager = document.createDocumentFragment();
+      const totalPage = (((json.totalCount - 1) / json.limit) | 0) + 1;
+      const nowPage = ((json.offset / json.limit) | 0) + 1;
+      if (nowPage > 1) {
+        pager.appendChild(Object.assign(document.createElement('a'), {
+          textContent: '<<',
+          className: '',
+          style: 'margin:1rem;padding-inline:1rem;line-height:3em;',
+          href: `?myblogtype=archives&myblogpage=1`,
+        }))
+        pager.appendChild(Object.assign(document.createElement('a'), {
+          textContent: '<',
+          className: '',
+          style: 'margin:1rem;padding-inline:1rem;line-height:3em;',
+          href: `?myblogtype=archives&myblogpage=${nowPage - 1}`,
+        }))
+      }
+      pager.appendChild(Object.assign(document.createElement('span'), {
+        textContent: `${nowPage} / ${totalPage}`,
+        className: '',
+        style: 'margin:1rem;padding-inline:1rem;line-height:3em;',
+      }));
+      if (json.offset + 1 < totalPage) {
+        pager.appendChild(Object.assign(document.createElement('a'), {
+          textContent: '>',
+          className: '',
+          style: 'margin:1rem;padding-inline:1rem;line-height:3em;',
+          href: `?myblogtype=archives&myblogpage=${nowPage + 1}`,
+        }))
+        pager.appendChild(Object.assign(document.createElement('a'), {
+          textContent: '>>',
+          className: '',
+          style: 'margin:1rem;padding-inline:1rem;line-height:3em;',
+          href: `?myblogtype=archives&myblogpage=${totalPage}`,
+        }))
+      }
+      cloneAs.querySelector('.archives-pager').appendChild(pager);
+      myblog.appendChild(cloneAs);
+    }
+    });
+  }
+  /**
+  * fetchの引数（URLとヘッダー）を作る
+  */
+  function createFetchParam(searchParams) {
+    const fetchParams = new URLSearchParams();
+    let endpoint = microcms.endpoint;
+    if (searchParams.get('myblogtype') === 'post') {
+      endpoint = `${endpoint}/${searchParams.get('myblogid')}`;
+    } else {
+      const page = searchParams.get('myblogpage');
+      const offset = microcms.limit * (page - 1);
+      fetchParams.set('offset', offset);
+      fetchParams.set('limit', microcms.limit);
+    }
+
+    const urlPathname = `/api/v1/${endpoint}`,
+      urlOrigin = `https://${microcms.serviceid}.microcms.io`;
+    const url = new URL(urlPathname, urlOrigin);
+    url.search = fetchParams.toString();
+    const headers = {
+      'X-MICROCMS-API-KEY': microcms.apikey
+    }
+    return [url, { headers }];
+  }
+  /**
+  * URLの更新
+  */
+  function pushHistory(searchParams) {
+    const url = new URL(location.href);
+    url.search = searchParams.toString();
+    const searchObj = {
+      myblogtype : searchParams.get('myblogtype'),
+    }
+    if (searchParams.get('myblogid') ) {
+		searchObj.myblogid = searchParams.get('myblogid');
+		}
+	if ( searchParams.get('myblogpage') ) {
+		searchObj.myblogpage = searchParams.get('myblogpage');
+	}
+    history.pushState(searchObj, "", url.href);
+  }
+
+  // 実行
+  init();
+  myblog.addEventListener('click', clickHandler, false);
+  window.addEventListener('popstate', backHandler, false);
+}
+</script>
