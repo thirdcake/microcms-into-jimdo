@@ -30,6 +30,7 @@
       <span class="post-title">タイトル</span>
     </div>
     <div class="parts-content-post">
+      <p class="post-category"><a href="#">カテゴリー</a></p>
       <p><time class="post-updateat">update_at</time></p>
       <div class="post-content">コンテンツ</div>
     </div>
@@ -61,6 +62,7 @@
         <img class="eyecatch-img" src="#" alt="#" decoding="async" width="16" height="9"
           style="display:none;width:400px;max-width:100%;height:auto;" />
       </div>
+      <p class="archive-category">カテゴリー：</p>
     </div>
   </template>
 
@@ -143,7 +145,9 @@
         const url = new URL(atag.href);
         if (url && url.origin === location.origin && url.pathname === location.pathname) {
           ev.preventDefault();
-          window.history.pushState({}, '', url.toString());
+          const searchParams = new URLSearchParams(location.search);
+          const state = (searchParams.get('myblogtype') === 'category') ? {categoryName: atag.textContent} : {}; 
+          window.history.pushState(state, '', url.toString());
           displayMyblog();
         }
       }
@@ -159,18 +163,27 @@
         const createFetchParam = (locationParams) => {
           const fetchParams = new URLSearchParams();
           let endpoint;
+          const pages = {
+            now:0,
+            offset:0,
+          }
           switch (locationParams.get('myblogtype')) {
             case 'post':
               endpoint = `${microcms.endpoint}/${locationParams.get('myblogid')}`;
               break;
             case 'category':
-              // category
+              endpoint = microcms.endpoint;
+              pages.now = locationParams.get('myblogpage');
+              pages.offset = microcms.limit * (pages.now - 1);
+              fetchParams.set('offset', pages.offset);
+              fetchParams.set('limit', microcms.limit);
+              fetchParams.set('filters', `category[equals]${locationParams.get('myblogid')}`);
               break;
             default:
               endpoint = microcms.endpoint;
-              const nowPage = locationParams.get('myblogpage');
-              const offset = microcms.limit * (nowPage - 1);
-              fetchParams.set('offset', offset);
+              pages.now = locationParams.get('myblogpage');
+              pages.offset = microcms.limit * (pages.now - 1);
+              fetchParams.set('offset', pages.offset);
               fetchParams.set('limit', microcms.limit);
           }
 
@@ -196,6 +209,8 @@
               title = json.title;
               break;
             case 'category':
+              title = json.contents[0].category.name;
+              break;
             case 'archive':
               title = '記事一覧';
               break;
@@ -219,6 +234,8 @@
               bread.querySelector('.post-title').textContent = json.title;
               break;
             case 'category':
+              bread.querySelector('.category-title').textContent = json.contents[0].category.name;
+              break;
             case 'archive':
             default:
           }
@@ -238,6 +255,13 @@
           switch (type) {
             case 'post':
               const contentPost = parts.querySelector('.parts-content-post');
+              if(json.category) {
+                const anch = contentPost.querySelector('.post-category a');
+                anch.textContent = json.category.name;
+                anch.href = `?myblogtype=category&myblogpage=1&myblogid=${json.category.id}`;
+              } else {
+                contentPost.querySelector('.post-category').style.display = 'none';
+              }
               contentPost.querySelector('.post-updateat').textContent = json.updatedAt;
               contentPost.querySelector('.post-updateat').datetime = json.updatedAt;
               contentPost.querySelector('.post-content').innerHTML = json.content;
@@ -268,6 +292,17 @@
                   img.style.display = `block`;
                 } else {
                   clone.querySelector('.eyecatch-noimg').style.display = `block`;
+                }
+                const category = clone.querySelector('.archive-category');
+                if(archive.category) {
+                  const anc = document.createElement('a');
+                  anc.href = `?myblogtype=category&myblogpage=1&myblogid=${archive.category.id}`;
+                  anc.textContent = archive.category.name;
+                  category.appendChild(anc);
+                }else {
+                  const span = document.createElement('span');
+                  span.textContent = 'その他';
+                  category.appendChild(span);
                 }
                 content.appendChild(clone);
               });
