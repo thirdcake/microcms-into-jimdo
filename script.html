@@ -1,270 +1,355 @@
-<div id="my-blog"></div>
-<template id="my-blog-post">
-  <h1 class="post-title">post-title</h1>
-  <nav>
-    <a href="/">トップページ</a>
-    <span>&nbsp;&gt;&nbsp;</span>
-    <a href="?">記事一覧</a>
-    <span>&nbsp;&gt;&nbsp;</span>
-    <span class="post-title">post-title</span>
-  </nav>
-  <p><time class="post-updateat">update_at</time></p>
-  <div class="post-content">content</div>
-  <p style="margin-block:2rem;"><a href="?">記事一覧に戻る</a></p>
-</template>
-<template id="my-blog-archives">
-  <h1>記事一覧</h1>
-  <nav>
-    <a href="/">トップページ</a>
-    <span>&nbsp;&gt;&nbsp;</span>
-    <span>記事一覧</span>
-  </nav>
-  <div class="archives-contents"></div>
-  <nav class="archives-pager">page</nav>
-</template>
-<template id="my-blog-archive">
-  <div class="archive-content" style="padding-block:2rem;">
-    <h2>
-      <a class="archive-url" href="#">
-        <span class="archive-title">title</span>
-      </a>
-    </h2>
-    <p><time class="archive-updateat">update_at</time></p>
-    <div style="max-width:800px; width:100%;">
-      <img src="#" alt="#" decoding="async" width="16" height="9" style="max-width:100%;height:auto;"
-        class="archive-eyecatch" />
-    </div>
+  <div id="my-blog">
+    <noscript>
+      <p>このページでは、JavaScriptを利用しています。JavaScriptを有効にしてください</p>
+    </noscript>
   </div>
-</template>
-<script>
-"use strict";
-{
-  /**
-   * 設定
-   */
-  const microcms = {
-    serviceid: "【サービスID】",
-    endpoint: "【エンドポイント】",
-    apikey: "【APIキー】",
-    limit: 5,
-  }
-  /** 
-   * DOMを取得する。
-  */
-  const myblog = document.getElementById('my-blog'),
-    templateP = document.getElementById('my-blog-post'),
-    templateAs = document.getElementById('my-blog-archives'),
-    templateA = document.getElementById('my-blog-archive');
+  <template id="my-blog-wrap">
+    <h1 class="my-blog-title">記事一覧 or タイトル</h1>
+    <div class="my-blog-bread">パンくずリスト</div>
+    <div class="my-blog-content">コンテンツ</div>
+    <div class="my-blog-pager">ページ</div>
+  </template>
+  <template id="my-blog-parts">
+    <div class="parts-bread-archive">
+      <a href="/">トップページ</a>
+      <span>&nbsp;&gt;&nbsp;</span>
+      <span>記事一覧</span>
+    </div>
+    <div class="parts-bread-category">
+      <a href="/">トップページ</a>
+      <span>&nbsp;&gt;&nbsp;</span>
+      <a href="?">記事一覧</a>
+      <span>&nbsp;&gt;&nbsp;</span>
+      <span class="category-title">カテゴリー</span>
+    </div>
+    <div class="parts-bread-post">
+      <a href="/">トップページ</a>
+      <span>&nbsp;&gt;&nbsp;</span>
+      <a href="?">記事一覧</a>
+      <span>&nbsp;&gt;&nbsp;</span>
+      <span class="post-title">タイトル</span>
+    </div>
+    <div class="parts-content-post">
+      <p><time class="post-updateat">update_at</time></p>
+      <div class="post-content">コンテンツ</div>
+    </div>
+    <div class="parts-pager-archive">
+      <a class="pager-first" href="?">&lt;&lt;</a>
+      <a class="pager-prev" href="?">&lt;</a>
+      <span class="pager-now">0 / 0</span>
+      <a class="pager-next" href="?">&gt;</a>
+      <a class="pager-last" href="?">&gt;&gt;</a>
+    </div>
+    <div class="parts-pager-post">
+      <a href="?">記事一覧に戻る</a>
+    </div>
+  </template>
+  <template id="my-blog-content-archive">
+    <div class="archive-content">
+      <h2>
+        <a class="archive-url" href="#">
+          <span class="archive-title">title</span>
+        </a>
+      </h2>
+      <p><time class="archive-updateat">update_at</time></p>
+      <div style="max-width:800px; width:100%;">
+        <svg class="eyecatch-noimg" width="400" height="225" viewBox="0 0 400 225"
+          style="display:none;background-color: #ddd;">
+          <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#555555" font-size="36"
+            font-family="Arial, sans-serif">NO IMAGE</text>
+        </svg>
+        <img class="eyecatch-img" src="#" alt="#" decoding="async" width="16" height="9"
+          style="display:none;width:400px;max-width:100%;height:auto;" />
+      </div>
+    </div>
+  </template>
 
-  /**
-  * 最初に実行する。location.searchを取得して、typeごとに表示する。
-  */
-  function init() {
-    const searchParams = getSearch(location.search);
-    const searchObj = {
-      myblogtype : searchParams.get('myblogtype'),
-    }
-    if (searchParams.get('myblogid') ) {
-		searchObj.myblogid = searchParams.get('myblogid');
-		}
-	if ( searchParams.get('myblogpage') ) {
-		searchObj.myblogpage = searchParams.get('myblogpage');
-	}
-    history.replaceState(searchObj, "", location.href);
-    displayMyblog(searchParams);
-  }
+  <script>
+    "use strict";
+    const microcms = {
+      serviceid: "【サービスID】",
+      endpoint: "【エンドポイント】",
+      apikey: "【APIキー】",
+      limit: 5,
+    };
+    (function (microcms) {
+      /** 
+       * DOMを取得する。
+      */
+      const myblog = document.getElementById('my-blog'),
+        tplWrap = document.getElementById('my-blog-wrap'),
+        tplParts = document.getElementById('my-blog-parts'),
+        tplArchive = document.getElementById('my-blog-content-archive');
 
-  /**
-   * クリックされたら実行する。preventDefaultして、表示を変更して、historyAPIを変更する。
-   */
-  function clickHandler(ev) {
-    if (shouldPreventDefault(ev.target)) {
-      ev.preventDefault();
-      const searchParams = getSearch(ev.target.closest('a').search);
-      displayMyblog(searchParams);
-      pushHistory(searchParams);
-    } else { return }
-  }
-  /**
-   * 戻るが押されたときに実行する。
-   */
-  function backHandler(ev) {
-    const searchParams = new URLSearchParams( ev.state );
-    displayMyblog(searchParams);
-  }
-  /**
-   * searh文字列からURLSearchParamsを返す
-   */
-  function getSearch(urlSearch) {
-    const params = new URLSearchParams(urlSearch);
-    const type = params.get('myblogtype');
-    const blogid = params.get('myblogid');
-    if (type && type === 'post' && blogid) {
-    } else {
-      params.set('myblogtype', 'archive');
-      const page = params.get('myblogpage');
-      if (page > 0) {
-      } else {
-        params.set('myblogpage', 1);
+      /** 
+       * history.stateを管理するオブジェクト
+       * @example
+       * stateObj.bySearch = location.search;
+       * window.history.pusState({}, "", stateObj.searchParams.toString());
+      */
+      const stateObj = {
+        _params: {},
+        _check({ type, page, id }) {
+          const params = new URLSearchParams();
+          page = (page > 0) ? page : 1;
+          type = id ? type : 'archive';
+          switch (type) {
+            case 'post':
+              params.set('myblogtype', 'post');
+              params.set('myblogid', id);
+              break;
+            case 'archive':
+              params.set('myblogtype', 'archive');
+              params.set('myblogpage', page);
+              break;
+            case 'category':
+              params.set('myblogtype', 'category');
+              params.set('myblogid', id);
+              params.set('myblogpage', page);
+              break;
+            default:
+              params.set('myblogtype', 'archive');
+              params.set('myblogpage', 1);
+          }
+          this._params = params;
+        },
+        set bySearch(string) {
+          const params = new URLSearchParams(string);
+          this._check({
+            type: params.get('myblogtype'),
+            page: parseInt(params.get('myblogpage')),
+            id: params.get('myblogid'),
+          });
+        },
+        get obj() {
+          const state = {}
+          this._params.forEach((val, key) => {
+            state[key] = val;
+          });
+          return state;
+        },
+        get searchParams() {
+          return this._params;
+        },
       }
-    }
-    return params
-  }
-  /**
-   * event targetをもとにpreventDefaultすべきか返す
-   */
-  function shouldPreventDefault(target) {
-    const href = target.closest('a')?.href;
-    const url = href ? new URL(href) : false;
-    return (
-      url &&
-      url.origin === location.origin &&
-      url.pathname === location.pathname
-    );
-  }
-  /**
-  * 表示処理
-  */
-  function displayMyblog(searchParams) {
-    while (myblog.firstChild) {
-      myblog.removeChild(myblog.firstChild);
-    }
-    const fetchParam = createFetchParam(searchParams);
-    fetch(...fetchParam)
-    .then(res => res.json())
-    .then(json => {
-    if (searchParams.get('myblogtype') === 'post') {
-      const cloneP = templateP.content.cloneNode(true);
-      cloneP.querySelectorAll('.post-title').forEach(elm => {
-        elm.textContent = json.title;
-      });
-      cloneP.querySelector('.post-content').innerHTML = json.content;
-      const date = new Date(json.updatedAt);
-      cloneP.querySelector('.post-updateat').textContent = date.toLocaleDateString('ja-JP', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        weekday: 'short',
-      });
-      cloneP.querySelector('.post-updateat').datetime = json.updatedAt;
-      myblog.appendChild(cloneP);
-    } else {
-      const cloneAs = templateAs.content.cloneNode(true);
-      const fragment = json.contents.reduce((frag, item) => {
-        const cloneA = templateA.content.cloneNode(true);
-        cloneA.querySelector('.archive-title').textContent = item.title;
-        const params = new URLSearchParams();
-        params.set('myblogtype', 'post');
-        params.set('myblogid', item.id);
-        const url = new URL(location.href);
-        url.search = params.toString();
-        cloneA.querySelector('.archive-url').href = url;
-        const date = new Date(item.updatedAt);
-        cloneA.querySelector('.archive-updateat').textContent = date.toLocaleDateString('ja-JP', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          weekday: 'short',
-        });
-        cloneA.querySelector('.archive-updateat').datetime = item.updatedAt;
-        if (item.eyecatch) {
-          cloneA.querySelector('.archive-eyecatch').src = item.eyecatch.url;
-          cloneA.querySelector('.archive-eyecatch').alt = item.title;
-          cloneA.querySelector('.archive-eyecatch').width = item.eyecatch.width;
-          cloneA.querySelector('.archive-eyecatch').height = item.eyecatch.height;
-        } else {
-          cloneA.querySelector('.archive-eyecatch').parentNode.innerHTML = '<svg width="400" height="225" viewBox="0 0 400 225" style="background-color: #ddd;"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#555555" font-size="36" font-family="Arial, sans-serif">no image</text></svg>';
+
+      /**
+       * クリックされたら実行する。preventDefaultして、表示を変更して、historyAPIを変更する。
+       * @param {Event} ev
+       */
+      function clickHandler(ev) {
+        const atag = ev.target.closest('a');
+        if (!atag) return;
+        const url = new URL(atag.href);
+        if (url && url.origin === location.origin && url.pathname === location.pathname) {
+          ev.preventDefault();
+          window.history.pushState({}, '', url.toString());
+          displayMyblog();
         }
-        frag.appendChild(cloneA);
-        return frag;
-      }, document.createDocumentFragment());
-      cloneAs.querySelector('.archives-contents').appendChild(fragment);
-      const pager = document.createDocumentFragment();
-      const totalPage = (((json.totalCount - 1) / json.limit) | 0) + 1;
-      const nowPage = ((json.offset / json.limit) | 0) + 1;
-      if (nowPage > 1) {
-        pager.appendChild(Object.assign(document.createElement('a'), {
-          textContent: '<<',
-          className: '',
-          style: 'margin:1rem;padding-inline:1rem;line-height:3em;',
-          href: `?myblogtype=archives&myblogpage=1`,
-        }))
-        pager.appendChild(Object.assign(document.createElement('a'), {
-          textContent: '<',
-          className: '',
-          style: 'margin:1rem;padding-inline:1rem;line-height:3em;',
-          href: `?myblogtype=archives&myblogpage=${nowPage - 1}`,
-        }))
       }
-      pager.appendChild(Object.assign(document.createElement('span'), {
-        textContent: `${nowPage} / ${totalPage}`,
-        className: '',
-        style: 'margin:1rem;padding-inline:1rem;line-height:3em;',
-      }));
-      if (json.offset + 1 < totalPage) {
-        pager.appendChild(Object.assign(document.createElement('a'), {
-          textContent: '>',
-          className: '',
-          style: 'margin:1rem;padding-inline:1rem;line-height:3em;',
-          href: `?myblogtype=archives&myblogpage=${nowPage + 1}`,
-        }))
-        pager.appendChild(Object.assign(document.createElement('a'), {
-          textContent: '>>',
-          className: '',
-          style: 'margin:1rem;padding-inline:1rem;line-height:3em;',
-          href: `?myblogtype=archives&myblogpage=${totalPage}`,
-        }))
+      /**
+      * 表示処理
+      */
+      function displayMyblog() {
+        /**
+          * fetchの引数（URLとヘッダー）を作る
+          * @param {URLSearchParams} locationParams
+          * @returns {Array} ['url_String', {header: {microcms_api_key}}]
+          */
+        const createFetchParam = (locationParams) => {
+          const fetchParams = new URLSearchParams();
+          let endpoint;
+          switch (locationParams.get('myblogtype')) {
+            case 'post':
+              endpoint = `${microcms.endpoint}/${locationParams.get('myblogid')}`;
+              break;
+            case 'category':
+              // category
+              break;
+            default:
+              endpoint = microcms.endpoint;
+              const nowPage = locationParams.get('myblogpage');
+              const offset = microcms.limit * (nowPage - 1);
+              fetchParams.set('offset', offset);
+              fetchParams.set('limit', microcms.limit);
+          }
+
+          const urlPathname = `/api/v1/${endpoint}`,
+            urlOrigin = `https://${microcms.serviceid}.microcms.io`;
+          const url = new URL(urlPathname, urlOrigin);
+          url.search = fetchParams.toString();
+          const headers = {
+            'X-MICROCMS-API-KEY': microcms.apikey
+          }
+          return [url.toString(), { headers }];
+        }
+        /** 
+         * <h1>に入るtitleを返す
+         * @param {String} type
+         * @param {Object} json
+         * @returns {String}
+        */
+        const createTitle = (type, json) => {
+          let title;
+          switch (type) {
+            case 'post':
+              title = json.title;
+              break;
+            case 'category':
+            case 'archive':
+              title = '記事一覧';
+              break;
+            default:
+              title = 'エラー';
+          }
+          return title;
+        }
+        /** 
+         * パンくずリストとなるFragmentを返す
+         * @param {String} type
+         * @param {Object} json
+         * @param {Object} parts
+         * @returns {DocumentFragment}
+        */
+        const createBread = (type, json, parts) => {
+          const bread = parts.querySelector(`.parts-bread-${type}`);
+          if (!bread) return document.createDocumentFragment();
+          switch (type) {
+            case 'post':
+              bread.querySelector('.post-title').textContent = json.title;
+              break;
+            case 'category':
+            case 'archive':
+            default:
+          }
+          return bread;
+        }
+        /** 
+         * メインコンテンツとなるFragmentを返す
+         * @param {String} type
+         * @param {Object} json
+         * @param {Object} parts
+         * @param {Object} template
+         * @returns {DocumentFragment}
+        */
+        const createContent = (type, json, parts, template) => {
+          const content = document.createDocumentFragment();
+          console.log(json);
+          switch (type) {
+            case 'post':
+              const contentPost = parts.querySelector('.parts-content-post');
+              contentPost.querySelector('.post-updateat').textContent = json.updatedAt;
+              contentPost.querySelector('.post-updateat').datetime = json.updatedAt;
+              contentPost.querySelector('.post-content').innerHTML = json.content;
+              content.appendChild(contentPost)
+              break;
+            case 'archive':
+            case 'category':
+              json.contents.forEach(archive => {
+                const clone = template.content.cloneNode(true);
+                const url = new URL(location.href);
+                url.search = new URLSearchParams({
+                  myblogtype: 'post',
+                  myblogid: archive.id,
+                });
+                clone.querySelector('.archive-url').href = url.toString();
+                clone.querySelector('.archive-title').textContent = archive.title;
+                clone.querySelector('.archive-updateat').datetime = ``;
+                clone.querySelector('.archive-updateat').textContent = archive.updatedAt;
+                if (archive.eyecatch) {
+                  const img = clone.querySelector('.eyecatch-img');
+                  const imgURL = new URL(archive.eyecatch.url);
+                  const imgURLSearch = new URLSearchParams({ w: 400 });
+                  imgURL.search = imgURLSearch.toString();
+                  img.src = imgURL.toString();
+                  img.width = archive.eyecatch.width;
+                  img.height = archive.eyecatch.height;
+                  img.alt = archive.title;
+                  img.style.display = `block`;
+                } else {
+                  clone.querySelector('.eyecatch-noimg').style.display = `block`;
+                }
+                content.appendChild(clone);
+              });
+              break;
+            default:
+          }
+          return content;
+        }
+        /** 
+         * ページャーとなるFragmentを返す
+         * @param {String} type
+         * @param {Object} json
+         * @param {Object} parts
+         * @returns {DocumentFragment}
+        */
+        const createPager = (type, json, parts) => {
+          if (type === 'category') {
+            type = 'archive';
+          }
+          const pager = parts.querySelector(`.parts-pager-${type}`);
+          if (pager) {
+            if (type === 'archive') {
+              const nowPage = ((json.offset / json.limit) | 0) + 1;
+              const totalPage = (((json.totalCount - 1) / json.limit) | 0) + 1;
+              if (nowPage === 1) {
+                pager.querySelector('.pager-first').style.display = 'none';
+                pager.querySelector('.pager-prev').style.display = 'none';
+              } else {
+                pager.querySelector('.pager-first').href = '?';
+                pager.querySelector('.pager-prev').href = `?myblogtype=archive&myblogpage=${nowPage - 1}`;
+              }
+              pager.querySelector('.pager-now').textContent = `${nowPage} / ${totalPage}`;
+              if (nowPage < totalPage) {
+                pager.querySelector('.pager-next').href = `?myblogtype=archive&myblogpage=${nowPage + 1}`;
+                pager.querySelector('.pager-last').href = `?myblogtype=archive&myblogpage=${totalPage}`;
+              } else {
+                pager.querySelector('.pager-next').style.display = 'none';
+                pager.querySelector('.pager-last').style.display = 'none';
+              }
+            }
+            return pager;
+          } else {
+            return document.createDocumentFragment();
+          }
+        }
+        const changeElement = (oldElement, newElement) => {
+          const parent = oldElement.parentNode;
+          parent.insertBefore(newElement, oldElement);
+          parent.removeChild(oldElement);
+        }
+        // 実行
+        while (myblog.firstChild) {
+          myblog.removeChild(myblog.firstChild);
+        }
+        stateObj.bySearch = location.search;
+        const fetchParam = createFetchParam(stateObj.searchParams);
+        fetch(...fetchParam)
+          .then(res => res.json())
+          .then(json => {
+            const cloneWrap = tplWrap.content.cloneNode(true);
+            const cloneParts = tplParts.content.cloneNode(true);
+            const type = stateObj.searchParams.get('myblogtype');
+            cloneWrap.querySelector('.my-blog-title').textContent = createTitle(type, json);
+            const breadWrap = cloneWrap.querySelector('.my-blog-bread');
+            const bread = createBread(type, json, cloneParts);
+            breadWrap.textContent = '';
+            breadWrap.appendChild(bread);
+            const contentWrap = cloneWrap.querySelector('.my-blog-content');
+            const content = createContent(type, json, cloneParts, tplArchive);
+            contentWrap.textContent = '';
+            contentWrap.appendChild(content);
+            const pagerWrap = cloneWrap.querySelector('.my-blog-pager');
+            const pager = createPager(type, json, cloneParts);
+            pagerWrap.textContent = '';
+            pagerWrap.appendChild(pager);
+            myblog.appendChild(cloneWrap);
+          });
       }
-      cloneAs.querySelector('.archives-pager').appendChild(pager);
-      myblog.appendChild(cloneAs);
-    }
-    });
-  }
-  /**
-  * fetchの引数（URLとヘッダー）を作る
-  */
-  function createFetchParam(searchParams) {
-    const fetchParams = new URLSearchParams();
-    let endpoint = microcms.endpoint;
-    if (searchParams.get('myblogtype') === 'post') {
-      endpoint = `${endpoint}/${searchParams.get('myblogid')}`;
-    } else {
-      const page = searchParams.get('myblogpage');
-      const offset = microcms.limit * (page - 1);
-      fetchParams.set('offset', offset);
-      fetchParams.set('limit', microcms.limit);
-    }
 
-    const urlPathname = `/api/v1/${endpoint}`,
-      urlOrigin = `https://${microcms.serviceid}.microcms.io`;
-    const url = new URL(urlPathname, urlOrigin);
-    url.search = fetchParams.toString();
-    const headers = {
-      'X-MICROCMS-API-KEY': microcms.apikey
-    }
-    return [url, { headers }];
-  }
-  /**
-  * URLの更新
-  */
-  function pushHistory(searchParams) {
-    const url = new URL(location.href);
-    url.search = searchParams.toString();
-    const searchObj = {
-      myblogtype : searchParams.get('myblogtype'),
-    }
-    if (searchParams.get('myblogid') ) {
-		searchObj.myblogid = searchParams.get('myblogid');
-		}
-	if ( searchParams.get('myblogpage') ) {
-		searchObj.myblogpage = searchParams.get('myblogpage');
-	}
-    history.pushState(searchObj, "", url.href);
-  }
-
-  // 実行
-  init();
-  myblog.addEventListener('click', clickHandler, false);
-  window.addEventListener('popstate', backHandler, false);
-}
-</script>
+      // 実行
+      displayMyblog();
+      myblog.addEventListener('click', clickHandler, false);
+      window.addEventListener('popstate', displayMyblog, false);
+    })(microcms);
+  </script>
