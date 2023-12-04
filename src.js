@@ -9,7 +9,7 @@
     tplArchive = document.getElementById('my-blog-content-archive');
 
   /** 
-   * history.stateを管理するオブジェクト
+   * URLSearchParamsを管理するオブジェクト
    * @example
    * stateObj.bySearch = location.search;
    * window.history.pusState({}, "", stateObj.searchParams.toString());
@@ -62,6 +62,7 @@
 
   /**
    * クリックされたら実行する。preventDefaultして、表示を変更して、historyAPIを変更する。
+   * ページ内リンク（<a href="#heading2">link</a>のようなもの）への対応ができていない。
    * @param {Event} ev
    */
   function clickHandler(ev) {
